@@ -6,8 +6,55 @@ import torch.nn.functional as F
 from torch import nn
 from torchvision.io import read_image
 from torch.utils.data import Dataset
-import pandas as pd
 from torch.utils.data import DataLoader
+from defisheye import Defisheye
+from picamera.array import PiRGBArray
+from picamera import PiCamera
+import time
+import cv2
+
+#Scanning image
+print("Scanning image\n")
+# initialize the camera and grab a reference to the raw camera capture
+camera = PiCamera()
+rawCapture = PiRGBArray(camera)
+# allow the camera to warmup
+time.sleep(0.1)
+# grab an image from the camera
+camera.capture(rawCapture, format="bgr")
+image = rawCapture.array
+
+#Image defisheye
+
+print("Converting image")
+
+dtype = 'linear'
+format = 'fullframe'
+fov = 180
+pfov = 90
+
+obj = Defisheye(image, dtype=dtype, format=format, fov=fov, pfov=pfov)
+
+# To use the converted image in memory
+
+new_image = obj.convert()
+
+#Image resizing
+print("resizing image")
+
+res = cv2.resize(new_image, dsize=(8, 16), interpolation=cv2.INTER_AREA)
+gray_image = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY) 
+
+#Convert to tensor
+print("Convert to tensor adn threshold")
+
+inp = torch.tensor(gray_image)
+inp = inp.to(torch.float32).reshape((1,1,16,8))
+
+inp[inp<225.] = 1
+inp[inp>=225.] = 0
+
+#Go through model
 
 device = (
     "cuda"
@@ -47,7 +94,7 @@ model = Model().to(device)
 
 model = torch.load('model.pth')
 
-inp = read_image("a.jpg", mode = ImageReadMode.GRAY)
+inp = read_image("i.jpg", mode = ImageReadMode.GRAY)
 inp = inp.to(torch.float32).reshape((1,1,16,8))
 
 inp[inp<=40.] = 1
