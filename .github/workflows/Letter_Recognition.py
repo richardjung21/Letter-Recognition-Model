@@ -72,15 +72,19 @@ class Model(torch.nn.Module):
         self.conv1 = torch.nn.Conv2d(1, 32, 3, padding=1)
         self.conv2 = torch.nn.Conv2d(32, 64, 3, padding=1)
         
-        self.fc1 = torch.nn.Linear(512, 26)
+        self.fc1 = torch.nn.Linear(2048, 512) #Edited for model 2
+        self.batch_norm = torch.nn.BatchNorm1d(512)
+        self.fc2 = torch.nn.Linear(512, 26) #Edited for model 2
         
     def forward(self, x):
         x = F.max_pool2d(F.relu(self.conv1(x)), (2, 2))
-        x = F.max_pool2d(F.relu(self.conv2(x)), (2, 2))
+        x = F.relu(self.conv2(x))
         #print('x_shape:', x.shape)
         x = x.view(-1, self.num_flat_features(x))
         x = F.dropout(x)
         x = F.relu(self.fc1(x))
+        x = self.batch_norm(x)
+        x = F.relu(self.fc2(x)) #Added for model 2
         return x
     
     def num_flat_features(self, x):
@@ -92,7 +96,7 @@ class Model(torch.nn.Module):
     
 model = Model().to(device)
 
-model = torch.load('model.pth')
+model = torch.load('new_model_25.pth')
 
 inp = read_image("i.jpg", mode = ImageReadMode.GRAY)
 inp = inp.to(torch.float32).reshape((1,1,16,8))
